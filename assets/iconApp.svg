@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo -->
+  <rect width="1024" height="1024" rx="180" ry="180" fill="#0ea5a3"/>
+  <!-- Edificio simple -->
+  <g transform="translate(252,240)">
+    <rect x="0" y="120" width="220" height="420" rx="20" fill="#ffffff" opacity="0.9"/>
+    <rect x="50" y="170" width="40" height="40" fill="#0ea5a3"/>
+    <rect x="130" y="170" width="40" height="40" fill="#0ea5a3"/>
+    <rect x="50" y="250" width="40" height="40" fill="#0ea5a3"/>
+    <rect x="130" y="250" width="40" height="40" fill="#0ea5a3"/>
+    <rect x="50" y="330" width="40" height="40" fill="#0ea5a3"/>
+    <rect x="130" y="330" width="40" height="40" fill="#0ea5a3"/>
+  </g>
+  <!-- Letra C -->
+  <g transform="translate(520,290)">
+    <path d="M260,220c0,121-98,220-220,220S-180,411-180,290  -82,70 40,70c64,0 121,28 159,74l-68,54c-22-25-54-41-91-41-66,0-120,54-120,120s54,120 120,120c37,0 69-16 91-41l68,54c-38,46-95,74-159,74-121,0-220-99-220-220s99-220 220-220 220,99 220,220z"
+          fill="#ffffff"/>
+  </g>
+</svg>

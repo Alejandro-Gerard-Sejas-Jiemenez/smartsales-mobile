@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "390419076115",
+    "project_id": "smartsales365-3610f",
+    "storage_bucket": "smartsales365-3610f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:390419076115:android:e80136a5299d367e269be6",
+        "android_client_info": {
+          "package_name": "com.alejandro.smartsales365"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnSA6yOuuP8KsEpene8BuOc4qf2ma-loM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
