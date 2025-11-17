@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../../components/product/product_card.dart';
 import '../../models/product.dart';
 import '../../models/category.dart';
@@ -46,24 +47,60 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _initSpeech() async {
-    await _speech.initialize();
+    try {
+      final available = await _speech.initialize(onError: (err) {
+        print('Speech initialize error: ${err.errorMsg}');
+      }, onStatus: (status) {
+        print('Speech status: $status');
+      });
+      if (!available) {
+        print('SpeechToText not available');
+      }
+    } catch (e) {
+      print('Error initializing speech: $e');
+    }
   }
 
   void _startListening() async {
     if (!_isListening) {
-      bool available = await _speech.initialize();
-      if (available) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          onResult: (result) {
-            setState(() {
-              _searchController.text = result.recognizedWords;
-              _filterProducts();
-            });
-          },
-          localeId: 'es_ES',
-        );
+      // Request microphone permission at runtime
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permiso de micrófono denegado')));
+        return;
       }
+
+      // Ensure speech is initialized (some devices/emulators need re-init)
+      final available = await _speech.initialize(onError: (err) {
+        print('Speech initialize error: ${err.errorMsg}');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error en reconocimiento de voz: ${err.errorMsg}')));
+      }, onStatus: (status) {
+        print('Speech status: $status');
+      });
+
+      if (!available) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reconocimiento de voz no disponible en este dispositivo')));
+        return;
+      }
+
+      setState(() => _isListening = true);
+      _speech.listen(
+        onResult: (result) {
+          setState(() {
+            _searchController.text = result.recognizedWords;
+            _filterProducts();
+          });
+          // Cuando el resultado es final, intentamos interpretar el comando de voz
+          if (result.finalResult) {
+            _handleVoiceCommand(result.recognizedWords);
+          }
+        },
+        localeId: 'es_ES',
+        listenFor: Duration(seconds: 12),
+        pauseFor: Duration(seconds: 2),
+        partialResults: true,
+        cancelOnError: true,
+      );
     }
   }
 
@@ -124,9 +161,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _addToCart(Product product) async {
+    // wrapper: default quantity = 1
+    await _addToCartWithQuantity(product, 1);
+  }
+
+  Future<void> _addToCartWithQuantity(Product product, int quantity) async {
     try {
       setState(() => _isAddingToCart = true);
-      await _cartService.addToCart(product.id, 1);
+      if (product.stockActual < quantity) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Stock insuficiente para ${product.nombre}')));
+        return;
+      }
+      await _cartService.addToCart(product.id, quantity);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -149,11 +195,89 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isAddingToCart = false);
-      }
+      if (mounted) setState(() => _isAddingToCart = false);
     }
   }
+
+    /// Parse a voice command and try to extract quantity and product query.
+    /// Returns a map: {'quantity': int?, 'query': String}
+    Map<String, dynamic> _parseVoiceCommand(String text) {
+      final lower = text.toLowerCase();
+      int? qty;
+      final qtyRegex = RegExp(r"(\d+)\s*(?:x|veces|unidades|cajas|)", caseSensitive: false);
+      final m = qtyRegex.firstMatch(lower);
+      if (m != null) qty = int.tryParse(m.group(1)!);
+
+      if (qty == null) {
+        if (lower.contains('uno')) qty = 1;
+        else if (lower.contains('dos')) qty = 2;
+        else if (lower.contains('tres')) qty = 3;
+      }
+
+      // Remove common verbs
+      String cleaned = lower.replaceAll(RegExp(r"\b(comprar|añadir|agregar|poner|al carrito|al carrito de compras|por favor|porfa)\b", caseSensitive: false), '');
+      cleaned = cleaned.replaceAll(RegExp(r"\d+"), '').trim();
+      return {'quantity': qty, 'query': cleaned};
+    }
+
+    /// Handle the final voice result: try to interpret command and add to cart.
+    Future<void> _handleVoiceCommand(String text) async {
+      final parsed = _parseVoiceCommand(text);
+      final String query = (parsed['query'] ?? '').toString().trim();
+      final int? qty = parsed['quantity'] as int?;
+
+      if (query.isEmpty) {
+        // No clear product name — keep as search
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se entendió el producto. Mostrando resultados de búsqueda.')));
+        return;
+      }
+
+      // Buscar productos que coincidan
+      final matches = _allProducts.where((p) {
+        final name = p.nombre.toLowerCase();
+        final desc = (p.descripcion ?? '').toLowerCase();
+        return name.contains(query) || desc.contains(query);
+      }).toList();
+
+      if (matches.isEmpty) {
+        // Ningún match: popular búsqueda
+        _searchController.text = query;
+        _filterProducts();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se encontró producto exacto. Mostrando resultados de búsqueda.')));
+        return;
+      }
+
+      Product chosen;
+      if (matches.length == 1) {
+        chosen = matches.first;
+      } else {
+        // Preguntar al usuario cuál producto
+        final sel = await showDialog<Product?>(
+          context: context,
+          builder: (ctx) => SimpleDialog(title: Text('Selecciona el producto'), children: matches.take(6).map((p) => SimpleDialogOption(onPressed: () => Navigator.pop(ctx, p), child: Text(p.nombre))).toList()),
+        );
+        if (sel == null) {
+          // usuario canceló
+          return;
+        }
+        chosen = sel;
+      }
+
+      final int finalQty = qty ?? 1;
+      // Confirmación
+      final confirm = await showDialog<bool?>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Agregar al carrito'),
+          content: Text('Agregar $finalQty x ${chosen.nombre} al carrito?'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancelar')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Agregar'))],
+        ),
+      );
+
+      if (confirm == true) {
+        await _addToCartWithQuantity(chosen, finalQty);
+      }
+    }
 
   IconData _getCategoryIcon(String categoryName) {
     String name = categoryName.toLowerCase();

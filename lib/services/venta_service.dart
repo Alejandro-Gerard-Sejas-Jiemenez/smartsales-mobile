@@ -72,4 +72,6 @@ class VentaService {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  // getTopProductos removed per user request
 }

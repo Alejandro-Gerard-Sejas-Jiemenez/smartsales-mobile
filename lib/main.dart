@@ -70,7 +70,7 @@ class _MyAppState extends State<MyApp> {
         '/': (context) => const LoginScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const CustomerLayout(),
-        '/cart': (context) => const CartScreen(),
+    '/cart': (context) => const CartScreen(),
         '/admin/dashboard': (context) => AdminLayout(
               child: DashboardScreen(),
             ),

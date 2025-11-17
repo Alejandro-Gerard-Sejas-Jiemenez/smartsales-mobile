@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../screens/admin/dashboard_screen.dart';
 import '../utils/app_colors.dart';
 
 class AdminLayout extends StatelessWidget {

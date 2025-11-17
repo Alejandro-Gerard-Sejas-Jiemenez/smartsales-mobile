@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // 10.0.2.2 es la dirección especial para acceder al localhost desde el emulador de Android
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'http://ec2-3-134-106-25.us-east-2.compute.amazonaws.com:8000';
   
   // Auth endpoints
   static const String login = '/api/acceso_seguridad/token/';
@@ -30,8 +30,8 @@ class ApiEndpoints {
   static const String detallesVenta = '/api/detalles-venta/';
   static const String pagos = '/api/pagos/';
   
-  // Predicciones endpoints
-  static const String prediccionesVentas = '/api/predicciones-ventas/';
+  // Predicciones endpoints (coincide con el router del backend: 'predicciones')
+  static const String prediccionesVentas = '/api/predicciones/';
 }
 
 class ApiHeaders {

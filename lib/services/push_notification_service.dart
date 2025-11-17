@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../utils/api_constants.dart';
 
 class PushNotificationService {
   static FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -13,7 +14,8 @@ class PushNotificationService {
   // Windows: abre CMD → escribe "ipconfig" → busca IPv4
   // Si usas emulador: usa 10.0.2.2
   // Si usas celular físico: usa tu IP local (ej: 192.168.1.100)
-  static const String backendUrl = 'http://10.0.2.2:8000'; // ← CAMBIA AQUÍ
+  // Usar la URL centralizada (por defecto apunta al EC2).
+  static final String backendUrl = ApiEndpoints.baseUrl; // ej: http://ec2-...:8000
 
   /// Inicializar el servicio de notificaciones push
   static Future<void> initializeApp() async {
@@ -174,7 +176,7 @@ class PushNotificationService {
 
     print('✅ Token FCM disponible: ${token!.substring(0, 30)}...');
     print('🔐 JWT Token disponible: ${jwtToken.substring(0, 20)}...');
-    print('🌐 URL: $backendUrl/api/acceso_seguridad/registrar-token/');
+    print('🌐 URL: ${backendUrl}${ApiEndpoints.register.contains("acceso_seguridad") ? "/api/acceso_seguridad/registrar-token/" : "/api/acceso_seguridad/registrar-token/"}');
     print('📱 Plataforma: android');
 
     try {

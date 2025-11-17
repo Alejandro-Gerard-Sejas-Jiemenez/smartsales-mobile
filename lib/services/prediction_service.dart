@@ -5,19 +5,38 @@ import '../utils/local_storage.dart';
 
 class PredictionService {
 
-  Future<Map<String, dynamic>> getPredictions() async {
+  /// Obtiene la lista de predicciones desde el backend.
+  /// Devuelve una `List<dynamic>` con los objetos de predicción.
+  Future<List<dynamic>> getPredictions({int? categoriaId}) async {
     try {
       final token = await LocalStorage.getToken();
+
+      // Construir URI con posible query param `categoria`
+      String url = '${ApiEndpoints.baseUrl}${ApiEndpoints.prediccionesVentas}';
+      if (categoriaId != null) {
+        // Asegurar que termina con / para mantener compatibilidad
+        url = '$url?categoria=$categoriaId';
+      }
+
       final response = await http.get(
-        Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.prediccionesVentas}'),
+        Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': token != null ? 'Bearer $token' : '',
           'Content-Type': 'application/json',
         },
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final decoded = json.decode(response.body);
+        if (decoded is List) return decoded;
+        // Si el backend envía un objeto, intentar obtener el campo 'results'
+        if (decoded is Map && decoded.containsKey('results')) {
+          return decoded['results'] as List<dynamic>;
+        }
+        // De otro modo, envolver en lista
+        return [decoded];
+      } else if (response.statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicie sesión.');
       } else {
         throw Exception('Error al obtener predicciones: ${response.statusCode}');
       }
@@ -26,7 +45,7 @@ class PredictionService {
     }
   }
 
-  // Mock data for testing
+  // Mock data for testing / fallback
   Future<Map<String, dynamic>> getMockPredictions() async {
     await Future.delayed(Duration(seconds: 1)); // Simular delay de red
     return {

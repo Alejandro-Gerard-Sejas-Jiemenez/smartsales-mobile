@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/category.dart';
 import '../utils/local_storage.dart';
+import '../utils/api_constants.dart';
 
 class CategoryService {
-  final String baseUrl = 'http://10.0.2.2:8000/api';
+  // Usar el baseUrl centralizado; en `api_constants.dart` está configurado al EC2.
+  final String baseUrl = ApiEndpoints.baseUrl + '/api';
 
   Future<List<Category>> getCategories() async {
     try {
@@ -16,7 +18,8 @@ class CategoryService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/categorias/'),
+        // Construir URI de forma segura
+        Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.categorias}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -26,8 +29,13 @@ class CategoryService {
       print('📡 Respuesta categorías: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-        return data.map((json) => Category.fromJson(json)).toList();
+        final decoded = json.decode(utf8.decode(response.bodyBytes));
+        // Asegurarnos de que sea una lista antes de mapear
+        final List<dynamic> data = (decoded is List) ? decoded : (decoded['results'] ?? []);
+        print('CategoryService: decoded type=${decoded.runtimeType}, data type=${data.runtimeType}, length=${data.length}');
+        final List<Category> cats = data.map<Category>((json) => Category.fromJson(json as Map<String, dynamic>)).toList();
+        print('CategoryService: mapped cats runtimeType=${cats.runtimeType}, length=${cats.length}');
+        return cats;
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         throw Exception('Sesión expirada. Por favor inicia sesión nuevamente.');
       } else {
